@@ -1,118 +1,96 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("movie-form");
+// Select form and movie list container
+const form = document.getElementById("movie-form");
+const movieList = document.getElementById("movie-list");
+
+// Movie array to store movie objects
+let movies = [];
+
+// Function to render all movies
+function renderMovies() {
+    movieList.innerHTML = ""; // Clear previous list
+
+    movies.forEach((movie, index) => {
+        const movieCard = document.createElement("div");
+
+        movieCard.style.color = "white";
+        movieCard.style.backgroundColor = "#000";
+        movieCard.style.padding = "10px";
+        movieCard.style.margin = "10px 0";
+        movieCard.style.borderRadius = "5px";
+
+        movieCard.className = "movie-card";
+
+        movieCard.innerHTML = `
+            <h3>${movie.title}</h3>
+            <p><strong>Genre:</strong> ${movie.genre}</p>
+            <p><strong>Status:</strong> ${movie.watched ? " Watched" : " Not Watched"}</p>
+            <button class="toggle" data-index="${index}">${movie.watched ? "Mark as Unwatched" : "Mark as Watched"}</button>
+            <button class="delete" data-index="${index}">Delete</button>
+            <hr>
+        `;
+
+        movieList.appendChild(movieCard);
+    });
+}
+
+// Add movie on form submission
+form.addEventListener("submit", function (e) {
+    e.preventDefault(); // Prevent page reload
+
     const titleInput = document.getElementById("title");
     const genreInput = document.getElementById("genre");
-    const movieList = document.getElementById("movie-list");
 
-    // Load movies on page load
-    fetchMovies();
+    const newMovie = {
+        title: titleInput.value.trim(),
+        genre: genreInput.value.trim(),
+        watched: false
+    };
 
-    // Event Listener #1 - Submit Form
-    form.addEventListener("submit", handleAddMovie);
-
-    function fetchMovies() {
-        fetch("http://localhost:3000/movies")
-            .then(res => res.json())
-            .then(data => renderMovies(data))
-            .catch(err => console.error("Fetch failed:", err));
-    }
-
-    function renderMovies(movies) {
-        movieList.innerHTML = "";
-        movies.forEach(renderMovieCard); // Array iteration
-    }
-
-    function renderMovieCard(movie) {
-        const card = document.createElement("div");
-        card.style.border = "3px solid greenyellow";
-        card.style.backgroundColor = "#333"
-        card.style.color = "white"
-        card.style.padding = "10px";
-        card.style.margin = "10px 0";
-        card.classList.add("movie-card");
-
-        card.innerHTML = `
-      <h3>${movie.title}</h3>
-      <p>Genre: ${movie.genre}</p>
-      <p>Status: <strong>${movie.watched ? " Watched" : " Not Watched"}</strong></p>
-      <button class="toggle-watch">${movie.watched ? "Mark Unwatched" : "Mark Watched"}</button>
-      <button class="delete">Delete</button>
-    `;
-
-        // Event Listener #2 - Toggle Watched
-        card.querySelector(".toggle-watch").addEventListener("click", () => toggleWatched(movie));
-
-        // Event Listener #3 - Delete Movie
-        card.querySelector(".delete").addEventListener("click", () => deleteMovie(movie.id));
-
-        movieList.appendChild(card);
-    }
-
-    function handleAddMovie(e) {
-        e.preventDefault();
-
-        const title = titleInput.value.trim();
-        const genre = genreInput.value.trim();
-
-        if (!title || !genre) {
-            alert("Please fill in both fields.");
-            return;
-        }
-
-        const newMovie = {
-            title,
-            genre,
-            watched: false
-        };
-
-        fetch("http://localhost:3000/movies", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(newMovie)
-        })
-            .then(res => res.json())
-            .then(() => {
-                fetchMovies(); // Refresh list
-                form.reset();  // Clear form
-            });
-    }
-
-    function toggleWatched(movie) {
-        fetch(`http://localhost:3000/movies/${movie.id}`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ watched: !movie.watched })
-        })
-            .then(() => fetchMovies());
-    }
-
-    function deleteMovie(id) {
-        fetch(`http://localhost:3000/movies/${id}`, {
-            method: "DELETE"
-        })
-            .then(() => fetchMovies());
+    if (newMovie.title && newMovie.genre) {
+        movies.push(newMovie);
+        renderMovies();
+        form.reset(); // Clear form inputs
+    } else {
+        alert("Please enter both title and genre!");
     }
 });
 
+// Handle toggle and delete actions
+movieList.addEventListener("click", function (e) {
+    const index = e.target.dataset.index;
+
+    if (e.target.classList.contains("toggle")) {
+        movies[index].watched = !movies[index].watched;
+        renderMovies();
+    }
+
+    if (e.target.classList.contains("delete")) {
+        movies.splice(index, 1);
+        renderMovies();
+    }
+});
 
 function fetchAnimeQuote() {
     fetch("https://animechan.xyz/api/random")
         .then(res => res.json())
-        .then(data => {
-            const quoteBox = document.getElementById("quote-box");
+        .then(quote => {
+            const quoteBox = document.createElement("div");
+            quoteBox.className = "quote-box";
+            quoteBox.style.backgroundColor = "#000";
+            quoteBox.style.color = "#fff";
+            quoteBox.style.padding = "10px";
+            quoteBox.style.margin = "10px 0";
+            quoteBox.style.borderRadius = "10px";
+
             quoteBox.innerHTML = `
-                <p>"${data.quote}"</p>
-                <p><strong>- ${data.character}</strong> from <em>${data.anime}</em></p>
+                <blockquote>"${quote.quote}"</blockquote>
+                <button id="new-quote" onclick="fetchAnimeQuote()">Get New Quote</button>
+                <p>— ${quote.character} (${quote.anime})</p>
             `;
+
+            movieList.prepend(quoteBox);
         })
-        .catch(err => {
-            const quoteBox = document.getElementById("quote-box");
-            quoteBox.innerHTML = `<p>Oops! Could not load quote. Try again later.</p>`;
-            console.error("Animechan API error:", err);
+        .catch(error => {
+            console.error("Error fetching anime quote:", error);
         });
 }
-
